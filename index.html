@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Encuentra tu color · Con T de Tlacuache</title>
+<style>body{margin:0;background:#f3f2ef;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}</style></head><body>
+<!-- Con T de Tlacuache: buscador de color. Pegar en un bloque "Liquid personalizado" (Custom Liquid). Requiere el archivo tlacuache-color-finder.js en Assets del tema. -->
+<style>
+#tlcf{--tl-panel:#fbfaf8;--tl-fg:#1d1c22;--tl-muted:#6a6773;--tl-line:#dcd9d3;--tl-accent:#5b3fd1;--tl-accent-fg:#fff;--tl-ref:#2f7a4f;--tl-photo:#a5620f;
+  --tl-mono:ui-monospace,Menlo,Consolas,monospace;color:var(--tl-fg);font-size:15px;line-height:1.45;max-width:1240px;margin:0 auto;padding:8px 16px 40px;box-sizing:border-box}
+#tlcf *,#tlcf *::before,#tlcf *::after{box-sizing:border-box}
+#tlcf h2.tl-title{font-size:clamp(26px,4vw,38px);line-height:1.1;margin:16px 0 6px}
+#tlcf .tl-sub{color:var(--tl-muted);margin:0 0 20px;max-width:62ch}
+#tlcf .tl-layout{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:860px){#tlcf .tl-layout{grid-template-columns:minmax(0,1fr);gap:24px}}
+#tlcf .tl-picker{display:flex;flex-direction:column;gap:16px}
+#tlcf .tl-wheelbox{position:relative;width:100%;max-width:420px;aspect-ratio:1;margin:0 auto;touch-action:none}
+#tlcf canvas{display:block;width:100%;height:100%;border-radius:50%;cursor:crosshair}
+#tlcf canvas:focus-visible{outline:3px solid var(--tl-accent);outline-offset:4px}
+#tlcf .knob{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.35);pointer-events:none}
+#tlcf [hidden]{display:none!important}
+#tlcf .ring{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px #1d1c22;pointer-events:none}
+#tlcf .tip{position:absolute;z-index:3;width:max-content;max-width:220px;background:#fff;color:var(--tl-fg);border:1px solid var(--tl-line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:8px 10px;pointer-events:none;display:grid;grid-template-columns:28px minmax(0,1fr);gap:2px 9px;align-items:center;font-size:12px;line-height:1.3}
+#tlcf .tip .tsq{grid-row:span 3;width:28px;height:28px;border-radius:6px;border:1px solid var(--tl-line)}
+#tlcf .tip b{font-size:13px;overflow-wrap:anywhere}
+#tlcf .tip .tmu{color:var(--tl-muted)}
+#tlcf .tip .thx{font-family:var(--tl-mono)}
+#tlcf .tl-row{display:flex;gap:10px;align-items:center}
+#tlcf .tl-lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tl-muted);font-weight:700;margin:0 0 8px}
+#tlcf .tl-row .tl-lbl{margin:0}
+#tlcf input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:16px;border-radius:999px;border:1px solid var(--tl-line);min-width:0;margin:0;padding:0}
+#tlcf input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--tl-fg);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+#tlcf input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--tl-fg)}
+#tlcf .tl-target{display:flex;gap:12px;align-items:center}
+#tlcf .tsw{width:52px;height:52px;border-radius:12px;border:1px solid var(--tl-line);flex:none}
+#tlcf input[type=text]{font-family:var(--tl-mono);font-size:15px;background:#fff;color:var(--tl-fg);border:1px solid var(--tl-line);border-radius:8px;padding:8px 10px;width:110px;min-height:0;margin:0;box-shadow:none}
+#tlcf input[type=color]{width:42px;height:42px;padding:0;border:1px solid var(--tl-line);border-radius:8px;background:none;cursor:pointer;margin:0}
+#tlcf .chips{display:flex;flex-wrap:wrap;gap:6px}
+#tlcf .chip{font:inherit;font-size:13px;line-height:1.2;border:1px solid var(--tl-line);background:transparent;color:var(--tl-fg);border-radius:999px;padding:6px 11px;cursor:pointer;margin:0;min-height:0;min-width:0;letter-spacing:normal;text-transform:none;box-shadow:none}
+#tlcf .chip[aria-pressed="true"]{background:var(--tl-fg);color:#fff;border-color:var(--tl-fg)}
+#tlcf button:focus-visible,#tlcf input:focus-visible,#tlcf a:focus-visible{outline:2px solid var(--tl-accent);outline-offset:2px}
+#tlcf .best{background:var(--tl-panel);border:1px solid var(--tl-line);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:520px){#tlcf .best{grid-template-columns:minmax(0,1fr)}}
+#tlcf .pair{display:grid;grid-template-rows:1fr 1fr;min-height:300px}
+#tlcf .pair div{display:flex;align-items:flex-end;padding:12px 14px;font-size:14px;font-family:var(--tl-mono)}
+#tlcf .pair span{background:rgba(255,255,255,.85);color:#1d1c22;padding:2px 7px;border-radius:5px}
+#tlcf .binfo{padding:28px;display:flex;flex-direction:column;gap:10px;min-width:0}
+#tlcf .badge{align-self:flex-start;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--tl-fg);color:#fff}
+#tlcf .bname{font-weight:700;font-size:clamp(28px,3.2vw,38px);line-height:1.15;overflow-wrap:anywhere}
+#tlcf .bline,#tlcf .note{color:var(--tl-muted)}
+#tlcf .note{font-size:12px}
+#tlcf .bprice{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:6px}
+#tlcf .buy{align-self:flex-start;margin-top:auto;background:var(--tl-accent);color:var(--tl-accent-fg);text-decoration:none;font-weight:700;padding:13px 24px;font-size:16px;border-radius:999px}
+#tlcf h3.tl-h,#tlcf #tlcf-altwrap h2{font-size:18px;margin:28px 0 12px}
+#tlcf #tlcf-altwrap h2{margin-bottom:4px}
+#tlcf #tlcf-altwrap .note{margin:0 0 12px}
+#tlcf .bline{font-size:16px}
+#tlcf .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+@media (max-width:520px){#tlcf .list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#tlcf .item{display:flex;flex-direction:column;background:var(--tl-panel);border:1px solid var(--tl-line);border-radius:10px;overflow:hidden;color:inherit;text-decoration:none;min-width:0}
+#tlcf .item:hover{border-color:var(--tl-fg)}
+#tlcf .isw{height:64px;position:relative}
+#tlcf .isw .src{position:absolute;right:7px;top:7px;width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.85)}
+#tlcf .imeta{padding:8px 10px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+#tlcf .inm{font-weight:700;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
+#tlcf .iln{font-size:12px;color:var(--tl-muted);overflow-wrap:anywhere}
+#tlcf .ift{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--tl-muted);margin-top:auto;padding-top:4px;font-variant-numeric:tabular-nums}
+#tlcf .empty{color:var(--tl-muted);padding:24px 0}
+#tlcf .tl-legend{font-size:12px;color:var(--tl-muted);margin-top:28px;max-width:80ch}
+#tlcf .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+</style>
+
+<div id="tlcf">
+  <h2 class="tl-title">Encuentra tu color</h2>
+  <p class="tl-sub">Mueve el círculo por la rueda y ajusta la luminosidad. Te mostramos la pintura en existencia que más se parece. Los puntos de la rueda son las pinturas que tenemos: pasa el cursor sobre uno para ver cuál es, o tócalo para elegirlo.</p>
+  <div class="tl-layout">
+    <section class="tl-picker" aria-label="Selector de color">
+      <div class="tl-wheelbox" id="tlcf-wheelbox">
+        <canvas id="tlcf-wheel" width="840" height="840" tabindex="0" role="slider" aria-label="Rueda de color: flechas cambian tono y saturación"></canvas>
+        <div class="knob" id="tlcf-knob"></div>
+        <div class="ring" id="tlcf-ring" hidden></div>
+        <div class="tip" id="tlcf-tip" hidden></div>
+      </div>
+      <div class="tl-row"><span class="tl-lbl">Luz</span><input type="range" id="tlcf-val" min="0" max="100" value="70" aria-label="Luminosidad"></div>
+      <div class="tl-target">
+        <div class="tsw" id="tlcf-tsw"></div>
+        <input type="text" id="tlcf-hex" maxlength="7" aria-label="Código hex" spellcheck="false">
+        <input type="color" id="tlcf-native" aria-label="Elegir color con el selector del sistema">
+      </div>
+      <div>
+        <p class="tl-lbl">Tipo de pintura</p>
+        <div class="chips" id="tlcf-types" role="group" aria-label="Filtrar por tipo de pintura"></div>
+      </div>
+      <div>
+        <p class="tl-lbl">Marcas</p>
+        <div class="chips" id="tlcf-brands" role="group" aria-label="Filtrar por marca"></div>
+      </div>
+    </section>
+    <section aria-live="polite">
+      <div id="tlcf-bestwrap"></div>
+      <div id="tlcf-altwrap"></div>
+      <h3 class="tl-h">También se parecen</h3>
+      <div class="list" id="tlcf-list"></div>
+      <p class="tl-legend"><span class="dot" style="background:var(--tl-ref)"></span>Color tomado de la carta oficial del fabricante. <span class="dot" style="background:var(--tl-photo)"></span>Color aproximado, tomado de la foto del producto; los metálicos y lavados se ven distintos en persona. Los colores en pantalla varían según el monitor, así que úsalo como guía. <span id="tlcf-stock">Existencias al 21 oct 2026.</span></p>
+    </section>
+  </div>
+</div>
+<script src="tlacuache-color-finder.js" defer></script>
+
+</body></html>
