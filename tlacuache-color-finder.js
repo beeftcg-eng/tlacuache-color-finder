@@ -48,12 +48,16 @@ const keep=d=>!d.out&&(!on.size||on.has(d.b))&&(!type||d.t===type);
 const cv=$("wheel"),ctx=cv.getContext("2d"),N=cv.width,R=N/2;
 let st={h:8,s:.62,v:.7},dots=[];
 try{const s=JSON.parse(localStorage.getItem("tlcf-wheel")||"null");if(s&&isFinite(s.h))st=s}catch(e){}
-function drawWheel(){
-  const img=ctx.createImageData(N,N),px=img.data;
+// the full-brightness wheel is drawn once; lower brightness is a black layer on top (same result as HSV value, far cheaper)
+const base=document.createElement("canvas");base.width=base.height=N;
+{const bx=base.getContext("2d"),img=bx.createImageData(N,N),px=img.data;
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dx=x-R,dy=y-R,r=Math.hypot(dx,dy);if(r>R)continue;
-    const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360,[cr,cg,cb]=hsv2rgb(h,Math.min(1,r/R),st.v),i=(y*N+x)*4;
+    const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360,[cr,cg,cb]=hsv2rgb(h,Math.min(1,r/R),1),i=(y*N+x)*4;
     px[i]=cr;px[i+1]=cg;px[i+2]=cb;px[i+3]=255}
-  ctx.putImageData(img,0,0);
+  bx.putImageData(img,0,0)}
+function drawWheel(){
+  ctx.clearRect(0,0,N,N);ctx.drawImage(base,0,0);
+  ctx.beginPath();ctx.arc(R,R,R,0,7);ctx.fillStyle="#000";ctx.globalAlpha=1-st.v;ctx.fill();ctx.globalAlpha=1;
   // paints in stock whose brightness is near the slider show as dots
   dots=[];
   for(const d of DATA){if(!keep(d))continue;const dv=Math.abs(d.hsv[2]-st.v);if(dv>.12)continue;
@@ -69,25 +73,34 @@ function placeKnob(){const a=st.h*Math.PI/180,box=$("wheelbox").getBoundingClien
 function closeness(e){return e<3?"Casi idéntico":e<7?"Muy parecido":e<12?"Parecido":e<20?"Se acerca":"El más cercano disponible"}
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 const money=p=>"$"+(+p).toFixed(2)+" MXN";
+let lastKey="",lastRes=0,resTimer=0;
 function update(){
-  const t=target(),tl=lab(t);
+  const t=target();
   $("tsw").style.background=t;if(document.activeElement!==$("hex"))$("hex").value=t;$("native").value=t.toLowerCase();
   placeKnob();
+  clearTimeout(resTimer);
+  if(drag){const wait=150-(performance.now()-lastRes);if(wait>0){resTimer=setTimeout(update,wait);return}}
+  lastRes=performance.now();results(t)}
+function results(t){
+  const tl=lab(t);
   const pool=DATA.filter(keep);
   pool.forEach(d=>d.e=de00(tl,d.lab));pool.sort((a,b)=>a.e-b.e);
   const b=pool[0];
-  if(!b){$("bestwrap").innerHTML='<p class="empty">No hay pinturas con esa combinación de marca y tipo. Quita un filtro para ver más.</p>';$("altwrap").innerHTML="";$("list").innerHTML="";return}
+  if(!b){lastKey="";$("bestwrap").innerHTML='<p class="empty">No hay pinturas con esa combinación de marca y tipo. Quita un filtro para ver más.</p>';$("altwrap").innerHTML="";$("list").innerHTML="";return}
   $("bestwrap").innerHTML=`<article class="best"><div class="pair"><div style="background:${t}"><span>Tu color ${t}</span></div><div style="background:${b.h}"><span>${b.h}</span></div></div>
    <div class="binfo"><span class="badge">${closeness(b.e)}</span><div class="bname">${esc(b.n)}</div><div class="bline">${esc(b.b)} · ${esc(b.l)} · ${TNAME[b.t]}</div>
    <div class="bprice">${money(b.p)}</div>${b.s==="p"?'<div class="note">Color aproximado a partir de la foto del producto.</div>':""}
    <a class="buy" href="${b.u}">Ver en la tienda</a></div></article>`;
+  // the lists below only change when the paints or their closeness labels change, so skip rebuilding them otherwise
+  const key=pool.slice(0,20).map(d=>d.u+d.p+closeness(d.e)).join();
+  if(key!==lastKey){lastKey=key;
   // near-twins of the best match (same colour in another range or brand) get their own row
   const alts=pool.slice(1).filter(d=>d.e<12&&de00(d.lab,b.lab)<5).slice(0,6),altSet=new Set(alts);
   const card=d=>`<a class="item" href="${d.u}"><div class="isw" style="background:${d.h}"><span class="src" style="background:var(--tl-${d.s==="r"?"ref":"photo"})"></span></div>
    <div class="imeta"><div class="inm">${esc(d.n)}</div><div class="iln">${esc(d.b)} · ${esc(d.l)} · ${TNAME[d.t]}</div><div class="ift"><span>${money(d.p).replace(" MXN","")}</span><span>${closeness(d.e)}</span></div></div></a>`;
   $("altwrap").innerHTML=alts.length?`<h2>También te podría interesar</h2><p class="note">Casi el mismo color en otra marca, gama o tipo de pintura.</p><div class="list">${alts.map(card).join("")}</div>`:"";
-  $("list").innerHTML=pool.slice(1).filter(d=>!altSet.has(d)).slice(0,12).map(card).join("");
-  try{localStorage.setItem("tlcf-wheel",JSON.stringify(st))}catch(e){}
+  $("list").innerHTML=pool.slice(1).filter(d=>!altSet.has(d)).slice(0,12).map(card).join("")}
+  if(!drag)try{localStorage.setItem("tlcf-wheel",JSON.stringify(st))}catch(e){}
 }
 let raf=0;function schedule(redraw){if(redraw)needDraw=true;if(!raf)raf=requestAnimationFrame(()=>{raf=0;if(needDraw){drawWheel();needDraw=false}update()})}
 let needDraw=false;
@@ -102,11 +115,17 @@ function showTip(o){const tip=$("tip"),ring=$("ring");if(!o){tip.hidden=true;rin
   tip.innerHTML=`<span class="tsq" style="background:${d.h}"></span><b>${esc(d.n)}</b><span class="tmu">${esc(d.b)} · ${esc(d.l)}</span><span><span class="thx">${d.h}</span> · ${money(d.p).replace(" MXN","")}</span>`;
   tip.hidden=false;const tw=tip.offsetWidth,th=tip.offsetHeight;
   tip.style.left=Math.max(0,Math.min(r.width-tw,x+(x>r.width/2?-tw-14:14)))+"px";tip.style.top=Math.max(0,Math.min(r.height-th,y-th/2))+"px"}
-let drag=false;
-cv.addEventListener("pointerdown",e=>{const o=hit(e);if(o){setHex(o.d.h);showTip(o);return}
-  showTip(null);drag=true;cv.setPointerCapture(e.pointerId);fromPointer(e)});
-cv.addEventListener("pointermove",e=>{if(drag){fromPointer(e);return}if(e.pointerType!=="touch")showTip(hit(e))});
-cv.addEventListener("pointerup",()=>drag=false);cv.addEventListener("pointercancel",()=>drag=false);
+let drag=false,down=null;
+cv.addEventListener("pointerdown",e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);
+  down={x:e.clientX,y:e.clientY,dot:hit(e),moved:false};showTip(null);
+  if(!down.dot){drag=true;fromPointer(e)}});
+cv.addEventListener("pointermove",e=>{
+  if(down&&!down.moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){down.moved=true;drag=true}
+  if(drag){fromPointer(e);return}if(!down&&e.pointerType!=="touch")showTip(hit(e))});
+function endDrag(e,tap){const d=down;down=null;
+  if(tap&&d&&d.dot&&!d.moved){drag=false;setHex(d.dot.d.h);showTip(d.dot);return}
+  if(drag){drag=false;schedule(false)}}
+cv.addEventListener("pointerup",e=>endDrag(e,true));cv.addEventListener("pointercancel",e=>endDrag(e,false));
 cv.addEventListener("pointerleave",e=>{if(!drag&&e.pointerType!=="touch")showTip(null)});
 cv.addEventListener("keydown",e=>{const k={ArrowLeft:[-4,0],ArrowRight:[4,0],ArrowUp:[0,.04],ArrowDown:[0,-.04]}[e.key];if(!k)return;e.preventDefault();
   st.h=(st.h+k[0]+360)%360;st.s=Math.max(0,Math.min(1,st.s+k[1]));schedule(false)});
